@@ -149,6 +149,52 @@ resource "aws_security_group" "cloudops_sg" {
 }
 
 # -------------------------
+# IAM Role for EC2 / SSM
+# -------------------------
+
+resource "aws_iam_role" "cloudops_ssm_role" {
+  name = "cloudops-ec2-ssm-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Project = "CloudOps Enterprise Platform"
+  }
+}
+
+# -------------------------
+# Attach SSM Policy
+# -------------------------
+
+resource "aws_iam_role_policy_attachment" "cloudops_ssm_policy" {
+  role       = aws_iam_role.cloudops_ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# -------------------------
+# EC2 Instance Profile
+# -------------------------
+
+resource "aws_iam_instance_profile" "cloudops_ssm_profile" {
+  name = "cloudops-ec2-ssm-profile"
+  role = aws_iam_role.cloudops_ssm_role.name
+}
+
+# -------------------------
 # EC2 Instance
 # -------------------------
 
@@ -156,22 +202,30 @@ resource "aws_instance" "cloudops_server" {
   ami           = var.ami_id
   instance_type = var.instance_type
 
+  iam_instance_profile        = aws_iam_instance_profile.cloudops_ssm_profile.name
   subnet_id                   = aws_subnet.public_subnet.id
   vpc_security_group_ids      = [aws_security_group.cloudops_sg.id]
   associate_public_ip_address = true
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
               #!/bin/bash
 
               apt-get update -y
-              apt-get install -y docker.io
+              apt-get install -y docker.io nginx amazon-ssm-agent
 
               systemctl enable docker
               systemctl start docker
 
+              systemctl enable nginx
+              systemctl start nginx
+
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
+
               usermod -aG docker ubuntu
 
-              echo "CloudOps Enterprise Platform Server" > /var/www.html
+              echo "<h1>CloudOps Enterprise Platform Server</h1>" > /var/www/html/index.html
               EOF
 
   tags = {
