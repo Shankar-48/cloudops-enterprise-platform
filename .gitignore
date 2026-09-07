@@ -8,3 +8,4 @@ __pycache__/
 terraform/lambda_function.zip
 .aws/
 terraform/terraform.tfvars
+lambda/lambda_function.zip

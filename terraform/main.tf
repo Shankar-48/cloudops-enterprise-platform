@@ -233,3 +233,83 @@ resource "aws_instance" "cloudops_server" {
     Project = "CloudOps Enterprise Platform"
   }
 }
+# -------------------------
+# IAM Role for Lambda
+# -------------------------
+
+resource "aws_iam_role" "cloudops_lambda_role" {
+  name = "cloudops-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Project = "CloudOps Enterprise Platform"
+  }
+}
+
+# -------------------------
+# Lambda Logging Policy
+# -------------------------
+
+resource "aws_iam_role_policy" "cloudops_lambda_logging" {
+  name = "cloudops-lambda-logging"
+  role = aws_iam_role.cloudops_lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# -------------------------
+# Lambda Function
+# -------------------------
+
+resource "aws_lambda_function" "cloudops_lambda" {
+  function_name = "cloudops-enterprise-lambda"
+
+  role = aws_iam_role.cloudops_lambda_role.arn
+
+  runtime = "python3.12"
+  handler = "lambda_function.lambda_handler"
+
+  filename = "${path.module}/../lambda/lambda_function.zip"
+
+  source_code_hash = filebase64sha256(
+    "${path.module}/../lambda/lambda_function.zip"
+  )
+
+  timeout     = 10
+  memory_size = 128
+
+  tags = {
+    Project = "CloudOps Enterprise Platform"
+  }
+}
