@@ -313,3 +313,52 @@ resource "aws_lambda_function" "cloudops_lambda" {
     Project = "CloudOps Enterprise Platform"
   }
 }
+
+# -------------------------
+# ECR Repository
+# -------------------------
+
+resource "aws_ecr_repository" "cloudops_app" {
+  name                 = "cloudops-enterprise-app"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Project = "CloudOps Enterprise Platform"
+  }
+}
+
+# -------------------------
+# EC2 ECR Pull Permissions
+# -------------------------
+
+resource "aws_iam_role_policy" "cloudops_ec2_ecr_pull" {
+  name = "cloudops-ec2-ecr-pull"
+  role = aws_iam_role.cloudops_ssm_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = aws_ecr_repository.cloudops_app.arn
+      }
+    ]
+  })
+}
