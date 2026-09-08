@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloudops-microservices-ingress
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /users
+            pathType: Prefix
+            backend:
+              service:
+                name: user-service
+                port:
+                  number: 80
+
+          - path: /orders
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 80
