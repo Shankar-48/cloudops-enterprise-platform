@@ -362,3 +362,152 @@ resource "aws_iam_role_policy" "cloudops_ec2_ecr_pull" {
     ]
   })
 }
+
+
+
+# -------------------------
+# EKS Second Public Subnet
+# -------------------------
+
+resource "aws_subnet" "eks_public_subnet" {
+  vpc_id                  = aws_vpc.cloudops_vpc.id
+  cidr_block              = var.eks_public_subnet_cidr
+  availability_zone       = var.eks_availability_zone
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "cloudops-eks-public-subnet"
+  }
+}
+
+resource "aws_route_table_association" "eks_public_association" {
+  subnet_id      = aws_subnet.eks_public_subnet.id
+  route_table_id = aws_route_table.public_route_table.id
+}
+# -------------------------
+# EKS Cluster IAM Role
+# -------------------------
+
+resource "aws_iam_role" "eks_cluster_role" {
+  name = "cloudops-eks-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Project = "CloudOps Enterprise Platform"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  role       = aws_iam_role.eks_cluster_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+# -------------------------
+# EKS Node IAM Role
+# -------------------------
+
+resource "aws_iam_role" "eks_node_role" {
+  name = "cloudops-eks-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Project = "CloudOps Enterprise Platform"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_policy" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_ecr_policy" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
+}
+
+# -------------------------
+# EKS Cluster
+# -------------------------
+
+resource "aws_eks_cluster" "cloudops_eks" {
+  name     = "cloudops-eks"
+  role_arn = aws_iam_role.eks_cluster_role.arn
+
+  vpc_config {
+    subnet_ids = [
+      aws_subnet.public_subnet.id,
+      aws_subnet.eks_public_subnet.id
+    ]
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy
+  ]
+
+  tags = {
+    Name    = "cloudops-eks"
+    Project = "CloudOps Enterprise Platform"
+  }
+}
+
+# -------------------------
+# EKS Managed Node Group
+# -------------------------
+
+resource "aws_eks_node_group" "cloudops_nodes" {
+  cluster_name    = aws_eks_cluster.cloudops_eks.name
+  node_group_name = "cloudops-node-group"
+  node_role_arn   = aws_iam_role.eks_node_role.arn
+
+  subnet_ids = [
+    aws_subnet.public_subnet.id,
+    aws_subnet.eks_public_subnet.id
+  ]
+
+  instance_types = ["t3.small"]
+
+  scaling_config {
+    desired_size = 2
+    min_size     = 1
+    max_size     = 2
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_worker_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.eks_ecr_policy
+  ]
+
+  tags = {
+    Project = "CloudOps Enterprise Platform"
+  }
+}

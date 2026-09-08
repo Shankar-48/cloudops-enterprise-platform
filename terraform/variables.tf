@@ -22,10 +22,22 @@ variable "private_subnet_cidr" {
   default     = "10.0.2.0/24"
 }
 
+variable "eks_public_subnet_cidr" {
+  description = "EKS second public subnet CIDR"
+  type        = string
+  default     = "10.0.3.0/24"
+}
+
 variable "availability_zone" {
-  description = "AWS availability zone"
+  description = "Primary AWS availability zone"
   type        = string
   default     = "eu-north-1a"
+}
+
+variable "eks_availability_zone" {
+  description = "Second AWS availability zone for EKS"
+  type        = string
+  default     = "eu-north-1b"
 }
 
 variable "instance_type" {
