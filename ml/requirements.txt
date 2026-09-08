@@ -1,1 +1,97 @@
-scikit-learn==1.5.2
+# CloudOps Enterprise Platform
+
+## Project Overview
+
+An AWS-based CloudOps and DevOps platform integrating infrastructure as code, serverless computing, containerization, Kubernetes, CI/CD, monitoring, databases, event-driven processing, and ML data processing.
+
+## Architecture
+
+Internet
+→ API Gateway
+→ Lambda
+→ DynamoDB
+
+SQS
+→ Lambda
+→ DynamoDB
+
+Internet
+→ AWS Load Balancer
+→ EKS
+→ Kubernetes Pods
+→ Flask Application
+
+Developer
+→ GitHub
+→ GitHub Actions
+→ Docker
+→ Amazon ECR
+→ Amazon EKS
+
+## Implemented AWS Components
+
+- Amazon VPC
+- Public and private subnets
+- Internet Gateway
+- Route Table
+- Security Groups
+- EC2
+- IAM
+- AWS Systems Manager
+- Nginx
+- AWS Lambda
+- API Gateway
+- DynamoDB
+- Amazon SQS
+- Amazon ECR
+- Amazon EKS
+- CloudWatch
+- Amazon S3
+
+## DevOps Components
+
+- Terraform Infrastructure as Code
+- Docker containerization
+- GitHub Actions CI/CD
+- Trivy container security scanning
+- Kubernetes deployment
+- ECR image management
+
+## Event-Driven Architecture
+
+SQS messages trigger the Lambda function automatically.
+
+Lambda processes the event and stores the resulting record in DynamoDB.
+
+## ML/Data Pipeline
+
+A sample CSV dataset is stored in Amazon S3 and processed using a Python/scikit-learn training script.
+
+The pipeline generates model evaluation metrics.
+
+## Verification
+
+### EC2 Application
+`http://13.62.57.204:5000/health`
+
+### API Gateway
+`https://6e9mcfpjwe.execute-api.eu-north-1.amazonaws.com`
+
+### EKS
+Two worker nodes successfully running with application replicas.
+
+### DynamoDB
+Verified records written by Lambda.
+
+### SQS
+Messages successfully sent and processed through Lambda.
+
+### CI/CD
+GitHub Actions successfully builds, scans, pushes, and deploys the application.
+
+## Terraform
+
+All major AWS infrastructure is managed through Terraform.
+
+```bash
+terraform plan
