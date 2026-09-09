@@ -1,0 +1,6 @@
+{
+  "model": "LogisticRegression",
+  "features": ["feature_1", "feature_2"],
+  "coefficients": [0.55409203, 0.55408259],
+  "intercept": -26.62434195
+}

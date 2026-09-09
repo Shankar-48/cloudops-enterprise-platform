@@ -76,3 +76,93 @@ resource "aws_cloudwatch_metric_alarm" "cloudops_lambda_duration" {
 
   treat_missing_data = "notBreaching"
 }
+# -------------------------
+# CloudWatch Dashboard
+# -------------------------
+
+resource "aws_cloudwatch_dashboard" "cloudops_dashboard" {
+  dashboard_name = "cloudops-enterprise-dashboard"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          title = "EC2 CPU Utilization"
+          view  = "timeSeries"
+
+          region = var.aws_region
+
+          metrics = [
+            [
+              "AWS/EC2",
+              "CPUUtilization",
+              "InstanceId",
+              aws_instance.cloudops_server.id
+            ]
+          ]
+
+          period = 300
+          stat   = "Average"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          title = "Lambda Errors"
+
+          view   = "timeSeries"
+          region = var.aws_region
+
+          metrics = [
+            [
+              "AWS/Lambda",
+              "Errors",
+              "FunctionName",
+              aws_lambda_function.cloudops_lambda.function_name
+            ]
+          ]
+
+          period = 300
+          stat   = "Sum"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+
+        properties = {
+          title = "Lambda Duration"
+
+          view   = "timeSeries"
+          region = var.aws_region
+
+          metrics = [
+            [
+              "AWS/Lambda",
+              "Duration",
+              "FunctionName",
+              aws_lambda_function.cloudops_lambda.function_name
+            ]
+          ]
+
+          period = 300
+          stat   = "Average"
+        }
+      }
+    ]
+  })
+}

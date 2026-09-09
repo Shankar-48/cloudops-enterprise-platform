@@ -34,3 +34,40 @@ data "aws_caller_identity" "current" {}
 output "ml_data_lake_bucket" {
   value = aws_s3_bucket.cloudops_data_lake.bucket
 }
+# -------------------------
+# S3 Public Access Protection
+# -------------------------
+
+resource "aws_s3_bucket_public_access_block" "cloudops_data_lake_public_access" {
+  bucket = aws_s3_bucket.cloudops_data_lake.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# -------------------------
+# S3 Lifecycle Policy
+# -------------------------
+
+resource "aws_s3_bucket_lifecycle_configuration" "cloudops_data_lake_lifecycle" {
+  bucket = aws_s3_bucket.cloudops_data_lake.id
+
+  rule {
+    id     = "data-retention"
+    status = "Enabled"
+
+    filter {
+      prefix = "ml/"
+    }
+
+    expiration {
+      days = 90
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}

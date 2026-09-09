@@ -50,3 +50,14 @@ variable "ami_id" {
   description = "Ubuntu 24.04 AMI for Stockholm"
   type        = string
 }
+variable "redshift_subnet_cidr" {
+  description = "Redshift third subnet CIDR"
+  type        = string
+  default     = "10.0.4.0/24"
+}
+
+variable "redshift_availability_zone" {
+  description = "Third AWS availability zone for Redshift"
+  type        = string
+  default     = "eu-north-1c"
+}

@@ -100,14 +100,7 @@ resource "aws_security_group" "cloudops_sg" {
   description = "Security group for CloudOps application"
   vpc_id      = aws_vpc.cloudops_vpc.id
 
-  # SSH
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+
 
   # HTTP
   ingress {
@@ -510,4 +503,23 @@ resource "aws_eks_node_group" "cloudops_nodes" {
   tags = {
     Project = "CloudOps Enterprise Platform"
   }
+}
+# -------------------------
+# Third Public Subnet
+# -------------------------
+
+resource "aws_subnet" "redshift_subnet" {
+  vpc_id                  = aws_vpc.cloudops_vpc.id
+  cidr_block              = var.redshift_subnet_cidr
+  availability_zone       = var.redshift_availability_zone
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "cloudops-redshift-subnet"
+  }
+}
+
+resource "aws_route_table_association" "redshift_association" {
+  subnet_id      = aws_subnet.redshift_subnet.id
+  route_table_id = aws_route_table.public_route_table.id
 }

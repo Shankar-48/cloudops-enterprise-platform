@@ -1,26 +1,71 @@
 import json
+import math
 import boto3
-import os
+from decimal import Decimal
 from datetime import datetime, timezone
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("cloudops-enterprise-data")
 
+COEF_1 = Decimal("0.55409203")
+COEF_2 = Decimal("0.55408259")
+INTERCEPT = Decimal("-26.62434195")
 
-def store_item(item_id, message):
+
+def predict(feature_1, feature_2):
+    score = (
+        float(COEF_1) * float(feature_1)
+        + float(COEF_2) * float(feature_2)
+        + float(INTERCEPT)
+    )
+
+    probability = 1 / (1 + math.exp(-score))
+    prediction = 1 if probability >= 0.5 else 0
+
+    return {
+        "prediction": prediction,
+        "probability": Decimal(str(round(probability, 4))),
+        "score": Decimal(str(round(score, 4)))
+    }
+
+
+def store_item(item_id, message, inference=None):
     item = {
-        "id": item_id,
-        "message": message,
+        "id": str(item_id),
+        "message": str(message),
         "status": "stored",
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+    if inference is not None:
+        item["prediction"] = Decimal(str(inference["prediction"]))
+        item["probability"] = inference["probability"]
+        item["score"] = inference["score"]
 
     table.put_item(Item=item)
     return item
 
 
+def process_record(data):
+    item_id = data.get(
+        "id",
+        datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+    )
+
+    message = data.get("message", "CloudOps request")
+
+    inference = None
+
+    if "feature_1" in data and "feature_2" in data:
+        inference = predict(
+            data["feature_1"],
+            data["feature_2"]
+        )
+
+    return store_item(item_id, message, inference)
+
+
 def lambda_handler(event, context):
-    # SQS event
     if "Records" in event:
         results = []
 
@@ -32,24 +77,16 @@ def lambda_handler(event, context):
             except json.JSONDecodeError:
                 data = {"message": body}
 
-            item_id = data.get(
-                "id",
-                datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
-            )
-
-            message = data.get("message", "CloudOps SQS event")
-
-            results.append(store_item(item_id, message))
+            results.append(process_record(data))
 
         return {
             "statusCode": 200,
             "body": json.dumps({
                 "message": "SQS events processed successfully",
                 "items": results
-            })
+            }, default=str)
         }
 
-    # Direct/API Gateway invocation
     body = event.get("body")
 
     if isinstance(body, str):
@@ -61,14 +98,7 @@ def lambda_handler(event, context):
     if not isinstance(body, dict):
         body = event
 
-    item_id = body.get(
-        "id",
-        datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
-    )
-
-    message = body.get("message", "CloudOps Lambda request")
-
-    item = store_item(item_id, message)
+    item = process_record(body)
 
     return {
         "statusCode": 200,
@@ -76,7 +106,7 @@ def lambda_handler(event, context):
             "Content-Type": "application/json"
         },
         "body": json.dumps({
-            "message": "Data stored successfully in DynamoDB",
+            "message": "CloudOps ML inference completed",
             "item": item
-        })
+        }, default=str)
     }
